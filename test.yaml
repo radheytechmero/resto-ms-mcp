@@ -1,0 +1,183 @@
+ cat docker-compose.yaml 
+services:
+  dograh-init:
+    image: bash:5.2
+    container_name: dograh_init
+    profiles: ["remote", "local-turn"]
+    environment:
+      ENVIRONMENT: "${ENVIRONMENT:-local}"
+      SERVER_IP: "${SERVER_IP:-}"
+      PUBLIC_HOST: "${PUBLIC_HOST:-}"
+      PUBLIC_BASE_URL: "${PUBLIC_BASE_URL:-}"
+      BACKEND_API_ENDPOINT: "${BACKEND_API_ENDPOINT:-http://localhost:8000}"
+      TURN_HOST: "${TURN_HOST:-}"
+      TURN_SECRET: "${TURN_SECRET:-}"
+      FASTAPI_WORKERS: "${FASTAPI_WORKERS:-1}"
+    volumes:
+      - ./scripts:/workspace/scripts:ro
+      - ./deploy:/workspace/deploy:ro
+      - ./certs:/certs:ro
+      - nginx-generated:/generated/nginx
+      - coturn-generated:/generated/coturn
+    command:
+      - /workspace/scripts/run_dograh_init.sh
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_https
+    profiles: ["remote"]
+    depends_on:
+      dograh-init:
+        condition: service_completed_successfully
+      ui:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - nginx-generated:/etc/nginx/conf.d:ro
+      - ./certs:/etc/nginx/certs:ro
+    networks:
+      - app-network
+
+  coturn:
+    image: coturn/coturn:4.8.0
+    container_name: coturn
+    restart: unless-stopped
+    profiles: ["remote", "local-turn"]
+    depends_on:
+      dograh-init:
+        condition: service_completed_successfully
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      - "5349:5349/udp"
+      - "5349:5349/tcp"
+      - "49152-49200:49152-49200/udp"
+    volumes:
+      - coturn-generated:/etc/coturn:ro
+    command:
+      - -c
+      - /etc/coturn/turnserver.conf
+    networks:
+      - app-network
+
+  api:
+    image: ${REGISTRY:-dograhai}/dograh-api:latest
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    volumes:
+      - shared-tmp:/tmp
+
+    environment:
+      ENVIRONMENT: "${ENVIRONMENT:-local}"
+      LOG_LEVEL: "INFO"
+
+      BACKEND_API_ENDPOINT: "${BACKEND_API_ENDPOINT:-http://localhost:8000}"
+
+      # Neon PostgreSQL
+      DATABASE_URL: "${DATABASE_URL}"
+
+      # Shared Redis running on host port 9000
+      REDIS_URL: "redis://host.docker.internal:9000"
+
+      # AWS S3
+      ENABLE_AWS_S3: "true"
+
+      S3_BUCKET: "${S3_BUCKET}"
+      S3_REGION: "${S3_REGION}"
+
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+
+      FASTAPI_WORKERS: "${FASTAPI_WORKERS:-1}"
+
+      TURN_HOST: "${TURN_HOST:-}"
+      TURN_SECRET: "${TURN_SECRET:-}"
+      FORCE_TURN_RELAY: "${FORCE_TURN_RELAY:-false}"
+
+      OSS_JWT_SECRET: "${OSS_JWT_SECRET:?OSS_JWT_SECRET must be set}"
+
+      ENABLE_TELEMETRY: "${ENABLE_TELEMETRY:-true}"
+
+      POSTHOG_API_KEY: "phc_ItizB1dP6yv7ZYobbcqrpxTdbomDA8hJFSEmAMdYvIr"
+      POSTHOG_HOST: "https://us.i.posthog.com"
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      cloudflared:
+        condition: service_started
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health').read()\"",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    networks:
+      - app-network
+
+  ui:
+    image: ${REGISTRY:-dograhai}/dograh-ui:latest
+
+    environment:
+      BACKEND_URL: "${BACKEND_URL:-http://api:8000}"
+      NODE_ENV: "oss"
+
+      ENABLE_TELEMETRY: "${ENABLE_TELEMETRY:-true}"
+
+      POSTHOG_KEY: "phc_ItizB1dP6yv7ZYobbcqrpxTdbomDA8hJFSEmAMdYvIr"
+      POSTHOG_HOST: "https://us.posthog.com"
+
+    ports:
+      - "3010:3010"
+
+    depends_on:
+      api:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://localhost:3010 || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    networks:
+      - app-network
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-tunnel
+    command: tunnel --no-autoupdate --url http://api:8000 --metrics 0.0.0.0:2000
+    ports:
+      - "2000:2000"
+    networks:
+      - app-network
+
+volumes:
+  shared-tmp:
+    driver: local
+
+  nginx-generated:
+    driver: local
+
+  coturn-generated:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

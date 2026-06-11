@@ -38,7 +38,7 @@ function createServer() {
       description: "Search menu items",
       inputSchema: {
         query: z.string(),
-        no: z.string().optional(),
+        no: z.string().describe("Restaurant phone number"),
         restaurantId: z.string().optional(),
         limit: z.string().optional(),
       },
@@ -102,7 +102,7 @@ function createServer() {
         );
         const item = response.data;
         console.log("Menu item response:", item);
-        
+
         if (!item || Object.keys(item).length === 0) {
           return {
             content: [
@@ -156,8 +156,8 @@ function createServer() {
             price: z.number(),
           })
         ),
-        from: z.string(),
-        to: z.string(),
+        from: z.string().describe("Customer phone number"),
+        to: z.string().describe("Restaurant phone number"),
       },
     },
     async (input) => {
@@ -194,7 +194,7 @@ function createServer() {
     }
   );
 
-return server;
+  return server;
 }
 
 app.all("/mcp", async (req, res) => {
