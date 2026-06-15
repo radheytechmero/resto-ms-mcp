@@ -194,6 +194,50 @@ function createServer() {
     }
   );
 
+  server.registerTool(
+    'send-sms',
+    {
+      description: 'Send an SMS message',
+      inputSchema: {
+        to: z.string().describe('Customer phone number (called_number)'),
+        from: z.string().describe('Restaurant phone number (caller_number)'),
+        message: z.string().describe('Message content'),
+      },
+    },
+    async (input) => {
+      try {
+        await axios.post(
+          `${RESTO_MS_API_BASE_URL}/api/twilio/send-message`,
+          input,
+          {
+            headers: {
+              "x-agent-secret": "super_secret_agent_key_2024",
+            },
+          }
+        );
+        return {
+          content: [
+            {
+              type: "text",
+              text: "SMS sent successfully",
+            },
+          ],
+        };
+      } catch (error) {
+        console.error(error);
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Failed to send SMS",
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  )
+
   return server;
 }
 
@@ -239,4 +283,4 @@ app.listen(3000, () => {
   console.log(
     "MCP listening on http://localhost:3000"
   );
-});
+}); 
