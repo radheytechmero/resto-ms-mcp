@@ -9,6 +9,8 @@ import "dotenv/config";
 const app = express();
 app.use(express.json());
 
+const backendSecret = process.env.BACKEND_SECRET;
+
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE");
@@ -24,7 +26,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const RESTO_MS_API_BASE_URL = "http://localhost:5000";
+const RESTO_MS_API_BASE_URL = process.env.BACKEND_BASE_URL || "http://localhost:5000";
 
 function createServer() {
   const server = new McpServer({
@@ -50,7 +52,7 @@ function createServer() {
           {
             params: input,
             headers: {
-              "x-agent-secret": "super_secret_agent_key_2024",
+              "x-agent-secret": backendSecret,
             },
           }
         );
@@ -95,7 +97,7 @@ function createServer() {
           `${RESTO_MS_API_BASE_URL}/api/menu-items/${input.menuUID}`,
           {
             headers: {
-              "x-agent-secret": "super_secret_agent_key_2024",
+              "x-agent-secret": backendSecret,
               "Content-Type": "application/json",
             },
           }
@@ -167,7 +169,7 @@ function createServer() {
           input,
           {
             headers: {
-              "x-agent-secret": "super_secret_agent_key_2024",
+              "x-agent-secret": backendSecret,
             },
           }
         );
@@ -211,7 +213,7 @@ function createServer() {
           input,
           {
             headers: {
-              "x-agent-secret": "super_secret_agent_key_2024",
+              "x-agent-secret": backendSecret,
             },
           }
         );
@@ -279,8 +281,10 @@ app.get("/health", (_req, res) => {
   });
 });
 
-app.listen(3000, () => {
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
   console.log(
-    "MCP listening on http://localhost:3000"
+    `MCP listening on http://localhost:${PORT}`
   );
 }); 
