@@ -156,10 +156,23 @@ function createServer() {
             menuItemName: z.string(),
             quantity: z.number().min(1),
             price: z.number(),
+            size: z.enum(["small", "medium", "large", "extra-large"]).optional(),
+            customizations: z
+              .array(
+                z.object({
+                  id: z.string().describe("Clover modifier ID"),
+                  name: z.string().describe("Modifier name"),
+                  price: z.number().describe("Additional price in dollars"),
+                })
+              )
+              .optional()
+              .describe("Selected modifiers/options"),
+            notes: z.string().optional().describe("Special notes for this item"),
           })
         ),
         from: z.string().describe("Customer phone number"),
         to: z.string().describe("Restaurant phone number"),
+        specialRequests: z.string().optional().describe("Special requests for the entire order"),
       },
     },
     async (input) => {
