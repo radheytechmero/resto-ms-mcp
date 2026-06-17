@@ -144,7 +144,11 @@ function createServer() {
       description: "Create a restaurant order",
       inputSchema: {
         customerName: z.string(),
-        customerEmail: z.string().email().optional(),
+        customerEmail: z
+          .string()
+          .email()
+          .optional()
+          .or(z.literal("")),
         tableNumber: z.string().optional(),
         orderType: z
           .enum(["dine-in", "takeaway", "delivery"])
@@ -177,9 +181,14 @@ function createServer() {
     },
     async (input) => {
       try {
+        const payload = { ...input };
+        if (!payload.customerEmail) {
+          delete payload.customerEmail;
+        }
+
         const response = await axios.post(
           `${RESTO_MS_API_BASE_URL}/api/create-order`,
-          input,
+          payload,
           {
             headers: {
               "x-agent-secret": backendSecret,
