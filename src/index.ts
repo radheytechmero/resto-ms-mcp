@@ -157,10 +157,7 @@ function createServer() {
         orderItems: z.array(
           z.object({
             id: z.number(),
-            menuUID: z.string(),
-            menuItemName: z.string(),
             quantity: z.number().min(1),
-            price: z.number(),
             size: z.enum(["small", "medium", "large", "extra-large"]).optional(),
             customizations: z
               .array(
