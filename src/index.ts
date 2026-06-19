@@ -88,13 +88,13 @@ function createServer() {
     {
       description: "Get detailed information about a specific menu item",
       inputSchema: {
-        menuUID: z.string().describe("Unique identifier of the menu item"),
+        id: z.string().describe("id of the menu item"),
       },
     },
     async (input) => {
       try {
         const response = await axios.get(
-          `${RESTO_MS_API_BASE_URL}/api/menu-items/${input.menuUID}`,
+          `${RESTO_MS_API_BASE_URL}/api/menu-items/${input.id}`,
           {
             headers: {
               "x-agent-secret": backendSecret,
@@ -102,7 +102,7 @@ function createServer() {
             },
           }
         );
-        
+
         const item = response.data;
         console.log("Menu item response:", item);
 
@@ -120,7 +120,7 @@ function createServer() {
           content: [
             {
               type: "text",
-              text: JSON.stringify(item),
+              text: JSON.stringify(item.menuItem),
             },
           ],
         };
