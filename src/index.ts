@@ -40,7 +40,7 @@ function createServer() {
       description: "Search menu items",
       inputSchema: {
         query: z.string(),
-        no: z.string().describe("Restaurant phone number"),
+        to: z.string().describe("Restaurant phone number"),
         restaurantId: z.string().optional(),
         limit: z.string().optional(),
       },
@@ -50,7 +50,10 @@ function createServer() {
         const { data } = await axios.get(
           `${RESTO_MS_API_BASE_URL}/api/menu-items/search`,
           {
-            params: input,
+            params: {
+              ...input,
+              no: input.to
+            },
             headers: {
               "x-agent-secret": backendSecret,
             },
