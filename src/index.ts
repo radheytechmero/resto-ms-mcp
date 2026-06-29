@@ -147,16 +147,22 @@ function createServer() {
     {
       description: "Create a restaurant order",
       inputSchema: {
+        call_id: z.string().optional().describe("Call ID associated with this order"),
         customerName: z.string(),
-        customerEmail: z
-          .string()
-          .email()
-          .optional()
-          .or(z.literal("")),
+        customerEmail: z.string().optional().describe("Customer email address"),
         tableNumber: z.string().optional(),
         orderType: z
           .enum(["dine-in", "takeaway", "delivery"])
           .optional(),
+        deliveryAddress: z
+          .object({
+            street: z.string().describe("Street address"),
+            city: z.string().describe("City"),
+            zipCode: z.string().describe("ZIP/postal code"),
+            specialInstructions: z.string().optional().describe("Special delivery instructions"),
+          })
+          .optional()
+          .describe("Delivery address details for delivery orders"),
         orderItems: z.array(
           z.object({
             id: z.number(),
@@ -178,6 +184,7 @@ function createServer() {
         from: z.string().describe("Customer phone number"),
         to: z.string().describe("Restaurant phone number"),
         specialRequests: z.string().optional().describe("Special requests for the entire order"),
+        isConfirmed: z.boolean().optional().default(false).describe("Whether the order is confirmed by the customer"),
       },
     },
     async (input) => {
